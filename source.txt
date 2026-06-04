@@ -1,0 +1,205 @@
+#include "head.h"
+
+// Validator
+void Validator::clearInputBuffer() {
+    std::cin.clear();
+    std::cin.ignore(2147483647, '\n');
+}
+
+int Validator::getIntInput(int min, int max, const std::string& prompt) {
+    int val;
+    while (true) {
+        std::cout << prompt;
+        if (std::cin >> val && val >= min && val <= max) {
+            clearInputBuffer();
+            return val;
+        }
+        std::cout << "Ошибка! Введите число от " << min << " до " << max << ".\n";
+        clearInputBuffer();
+    }
+}
+
+void GraphSolver::readFromFile(int &n, std::vector<std::vector<int>> &adj, const std::string& filename) {
+    std::ifstream in(filename);
+    if (!in.is_open()) {
+        std::cout << "Файл " << filename << " не найден!\n";
+        n = 0;
+        return;
+    }
+    in >> n;
+    adj.assign(n, std::vector<int>(n));
+    for (int i = 0; i < n; ++i) for (int j = 0; j < n; ++j) in >> adj[i][j];
+    for (int i = 0; i < n; ++i) {
+        for (int j = 0; j < n; ++j) {
+            std::cout << adj[i][j] << " ";
+        }
+        std::cout<<std::endl;
+    }
+}
+
+void GraphSolver::inputMethodMenu(int &n, std::vector<std::vector<int>> &adj, const std::string& defaultFile, int maxN) {
+    std::cout << "\nСпособ ввода:\n1. Из файла (" << defaultFile << ")\n2. С клавиатуры\n3. Рандом\n";
+    int choice = Validator::getIntInput(1, 3, "Ваш выбор: ");
+
+    switch(choice) {
+        case 1: readFromFile(n, adj, defaultFile); break;
+        case 2: readFromConsole(n, adj, maxN); break;
+        case 3: generateRandom(n, adj, maxN); break;
+    }
+}
+
+void GraphSolver::readFromConsole(int &n, std::vector<std::vector<int>> &adj, int maxN) {
+    n = Validator::getIntInput(1, maxN, "Кол-во вершин (до " + std::to_string(maxN) + "): ");
+    adj.assign(n, std::vector<int>(n));
+
+    std::cout << "Введите матрицу (" << n << "x" << n << ") - только 0 или 1:\n";
+    for(int i = 0; i < n; ++i) {
+        for(int j = 0; j < n; ++j) {
+            while (!(std::cin >> adj[i][j]) || (adj[i][j] != 0 && adj[i][j] != 1)) {
+                std::cout << "Ошибка! Введите только 0 или 1 для позиции [" << i + 1 << "][" << j + 1 << "]: ";
+                Validator::clearInputBuffer();
+            }
+        }
+    }
+    for(int i=0; i<n; ++i) {
+        for (int j = 0; j < n; ++j) {
+            std::cout << adj[i][j] << " ";
+        }
+        std::cout<< std::endl;
+    }
+
+    Validator::clearInputBuffer();
+}
+
+void GraphSolver::generateRandom(int &n, std::vector<std::vector<int>> &adj, int maxN) {
+    n = Validator::getIntInput(1, maxN, "Размер случайного графа (до " + std::to_string(maxN) + "): ");
+    adj.assign(n, std::vector<int>(n, 0));
+    for(int i=0; i<n; ++i) {
+        for(int j=i+1; j<n; ++j) {
+            int val = (rand() % 100 < 60) ? 1 : 0;
+            adj[i][j] = adj[j][i] = val;
+        }
+    }
+    std::cout << "Граф сгенерирован!\n";
+    for(int i=0; i<n; ++i) {
+        for (int j = 0; j < n; ++j) {
+            std::cout << adj[i][j] << " ";
+        }
+        std::cout<< std::endl;
+    }
+}
+
+// BFS: находит кратчайшие расстояния от startNode до всех остальных вершин
+std::vector<int> GraphSolver::bfs(int startNode, int n, const std::vector<std::vector<int>>& adj) {
+    std::vector<int> dist(n, -1);
+    std::queue<int> q;
+    // Помещаем начальную вершину в очередь и устанавливаем расстояние до нее равным 0
+    q.push(startNode);
+    dist[startNode] = 0;
+
+    // Пока в очереди есть вершины, продолжаем обход
+    while (!q.empty()) {
+        int u = q.front(); q.pop();
+
+        // Перебираем все возможные вершины v (проверяем матрицу смежности)
+        for (int v = 0; v < n; ++v) {
+            if (adj[u][v] == 1 && dist[v] == -1) {
+                dist[v] = dist[u] + 1;
+                q.push(v);
+            }
+        }
+    }
+    return dist;
+}
+
+void GraphSolver::solveGraf2() {
+    int n; std::vector<std::vector<int>> adj;
+    inputMethodMenu(n, adj, "graf2.txt", 15);
+    if (n == 0) return;
+
+    std::vector<std::pair<int, int>> edges;
+    for (int i = 0; i < n; ++i) {
+        for (int j = i + 1; j < n; ++j) {
+            if (adj[i][j] == 1) edges.push_back({i, j});
+        }
+    }
+    std::cout << "\nМатрица инцидентности (" << n << " вершин, " << edges.size() << " ребер):\n";
+    for (int i = 0; i < n; ++i) {
+        for (const auto& edge : edges) {
+            std::cout << std::setw(2) << (edge.first == i || edge.second == i ? 1 : 0);
+        }
+        std::cout << "\n";
+    }
+}
+
+void GraphSolver::solveGraf7() {
+    int n; std::vector<std::vector<int>> adj;
+    inputMethodMenu(n, adj, "graf7.txt", 25);
+    if (n == 0) return;
+
+    int k1 = Validator::getIntInput(1, n, "Введите номер города 1-го штаба: ") - 1;
+    int k2 = Validator::getIntInput(1, n, "Введите номер города 2-го штаба: ") - 1;
+    int x = Validator::getIntInput(0, n, "Введите макс. расстояние (X): ");
+
+    std::vector<int> d1 = bfs(k1, n, adj);
+    std::vector<int> d2 = bfs(k2, n, adj);
+
+    std::cout << "\nГорода, доступные от обоих штабов за " << x << " шагов:\n";
+    for (int i = 0; i < n; ++i) {
+        if (d1[i] != -1 && d2[i] != -1 && d1[i] <= x && d2[i] <= x)
+            std::cout << i + 1 << " ";
+    }
+    std::cout << "\n";
+}
+
+void GraphSolver::solveGraf8() {
+    int n; std::vector<std::vector<int>> adj;
+    inputMethodMenu(n, adj, "graf8.txt", 15);
+    if (n == 0) return;
+
+    int k = Validator::getIntInput(1, n, "Введите ваш город: ") - 1;
+    int transfers = Validator::getIntInput(0, n, "Введите кол-во пересадок: ");
+
+    std::vector<int> dist = bfs(k, n, adj);
+
+    std::cout << "\nГорода, доступные в пределах " << transfers << " пересадок:\n";
+    bool found = false;
+
+    for (int i = 0; i < n; ++i) {
+
+        if (dist[i] != -1 && dist[i] <= transfers + 1 && dist[i] > 0) {
+            std::cout << i + 1 << " ";
+            found = true;
+        }
+    }
+
+    if (!found) std::cout << "Ничего не найдено.";
+    std::cout << "\n";
+}
+
+// MenuManager
+MenuManager::MenuManager() { srand(time(0)); }
+
+void MenuManager::showMainMenu() {
+    std::cout << "ГЛАВНОЕ МЕНЮ\n"
+              << "1. Задача 2: Матрица инцидентности\n"
+              << "2. Задача 7: Два штаба (BFS)\n"
+              << "3. Задача 8: Пересадки (BFS)\n"
+              << "0. Выход из программы\n"
+              << "Ваш выбор: ";
+}
+
+void MenuManager::run() {
+    int choice = -1;
+    while (choice != 0) {
+        showMainMenu();
+        choice = Validator::getIntInput(0, 3, "");
+        switch (choice) {
+            case 1: GraphSolver::solveGraf2(); break;
+            case 2: GraphSolver::solveGraf7(); break;
+            case 3: GraphSolver::solveGraf8(); break;
+            case 0: std::cout << "\n./\\.../\\\n(.'0.0'.)\n ..=*=..\n(.\\.||./.)~~**\n" << std::endl;
+                    std::cout << "Выход...\n"; break;
+        }
+    }
+}
